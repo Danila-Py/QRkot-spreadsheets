@@ -77,4 +77,6 @@ class CRUDCharityProject(BaseCharityRepository):
             return f'{hours} ч. {minutes:02} мин.'
         else:
             return f'{minutes} мин. {seconds:02} сек.'
+
+
 charity_project_crud = CRUDCharityProject(CharityProject)
