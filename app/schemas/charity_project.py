@@ -1,4 +1,5 @@
 from typing import Optional
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt
 
@@ -47,7 +48,7 @@ class CharityProjectReport(BaseModel):
     collection_time: str
     description: str
     collected_amount: int
-    close_date: str
+    close_date: datetime
 
     class Config:
         from_attributes = True

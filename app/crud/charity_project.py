@@ -1,7 +1,5 @@
 from typing import Optional
 from datetime import timedelta
-from sqlalchemy import select
-from operator import itemgetter
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,49 +32,41 @@ class CRUDCharityProject(BaseCharityRepository):
         self, session: AsyncSession
     ) -> list[CharityProjectReport]:
         """Получает закрытые проекты, отсортированные по скорости закрытия."""
-        stmt = select(CharityProject).where(
-            CharityProject.fully_invested.is_(True)
+        stmt = (
+            select(CharityProject)
+            .where(CharityProject.fully_invested.is_(True))
+            .order_by(
+                (CharityProject.close_date - CharityProject.create_date).asc()
+            )
         )
         db_projects = await session.execute(stmt)
         projects = db_projects.scalars().all()
-        projects_with_time = []
+        report_projects = []
         for project in projects:
             if project.close_date and project.create_date:
-                time_diff = project.close_date - project.create_date
-                collection_time = self._format_time_delta(time_diff)
-                close_date_str = project.close_date.strftime('%Y-%m-%d %H:%M')
-                projects_with_time.append({
-                    'project': project,
-                    'collection_time': collection_time,
-                    'close_date_str': close_date_str,
-                    'time_seconds': time_diff.total_seconds()
-                })
-        projects_with_time.sort(key=itemgetter('time_seconds'))
-        report_projects = []
-        for item in projects_with_time:
-            project = item['project']
-            report_projects.append(
-                CharityProjectReport(
+                collection_time = self._format_time_delta(
+                    project.close_date - project.create_date
+                )
+                report_project = CharityProjectReport(
                     name=project.name,
-                    collection_time=item['collection_time'],
+                    collection_time=collection_time,
                     description=project.description,
                     collected_amount=project.invested_amount,
-                    close_date=item['close_date_str']
+                    close_date=project.close_date
                 )
-            )
+                report_projects.append(report_project)
         return report_projects
 
-    def _format_time_delta(self, td: timedelta) -> str:
+    def _format_time_delta(self, time_delta: timedelta) -> str:
         """Форматирует timedelta в читаемый вид."""
-        days = td.days
-        hours, remainder = divmod(td.seconds, SECONDS_IN_HOUR)
+        days = time_delta.days
+        hours, remainder = divmod(time_delta.seconds, SECONDS_IN_HOUR)
         minutes, seconds = divmod(remainder, SECONDS_IN_MINUTE)
         if days > 0:
             return f'{days} дн. {hours:02} ч. {minutes:02} мин.'
-        elif hours > 0:
+        if hours > 0:
             return f'{hours} ч. {minutes:02} мин.'
-        else:
-            return f'{minutes} мин. {seconds:02} сек.'
+        return f'{minutes} мин. {seconds:02} сек.'
 
 
 charity_project_crud = CRUDCharityProject(CharityProject)

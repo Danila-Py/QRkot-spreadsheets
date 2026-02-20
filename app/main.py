@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routers import main_router
 from app.core.config import settings
-from app.core.init import lifespan
+from app.core.init_db import lifespan
 from app.core.user import auth_backend, fastapi_users
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 

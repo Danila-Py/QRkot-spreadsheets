@@ -12,11 +12,7 @@ async def check_name_duplicate(
         room_name: str,
         session: AsyncSession,
 ) -> None:
-    """Названия благотворительных проектов должны быть уникальны.
-
-    В системе не может быть двух проектов с одинаковым названием,
-    чтобы избежать путаницы и дублирования сбора средств.
-    """
+    """Названия благотворительных проектов должны быть уникальны."""
     room_id = await charity_project_crud.get_project_id_by_name(
         room_name,
         session
@@ -32,11 +28,7 @@ async def check_charity_project_exists(
         project_id: int,
         session: AsyncSession,
 ) -> CharityProject:
-    """Операции с проектом возможны только для существующего в БД проекта.
-
-    Все запросы на получение, редактирование или удаление проекта
-    должны содержать ID реально существующего проекта.
-    """
+    """Операции с проектом возможны только для существующего в БД проекта."""
     project = await charity_project_crud.get(
         project_id,
         session
@@ -53,11 +45,7 @@ async def check_charity_project_before_edit(
         charity_project: CharityProject,
         update_data: CharityProjectUpdate
 ) -> None:
-    """Редактирование проекта запрещено после завершения сбора средств.
-
-    Также нельзя уменьшить целевую сумму ниже уже собранной.
-    При достижении целевой суммы проект автоматически закрывается.
-    """
+    """Редактирование проекта запрещено после завершения сбора средств."""
     if charity_project.fully_invested:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
@@ -81,12 +69,7 @@ async def check_charity_project_before_edit(
 async def check_charity_project_is_not_invested(
         charity_project: CharityProject
 ) -> None:
-    """Запрещено удалять проекты, в которые уже были инвестированы средства.
-
-    Удаление проекта с пожертвованиями приведет к потере данных о транзакциях
-    и нарушению финансовой отчетности. Такие проекты можно только закрывать,
-    но не удалять из БД.
-    """
+    """Запрещено удалять проекты, в которые уже были инвестированы средства."""
     if charity_project.invested_amount:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,

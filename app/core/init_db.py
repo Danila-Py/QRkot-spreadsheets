@@ -23,7 +23,7 @@ async def create_superuser(session: AsyncSession) -> None:
     )
     if existing_user.scalars().first():
         logger.info(
-            "Суперпользователь {settings.superuser_email} уже существует",
+            f'Суперпользователь {settings.superuser_email} уже существует',
         )
         return
 
@@ -35,22 +35,20 @@ async def create_superuser(session: AsyncSession) -> None:
         is_verified=True,
     )
 
-    async for user_db in get_user_db(session):
-        async for user_manager in get_user_manager(user_db):
+    async with get_user_db(session) as user_db:
+        async with get_user_manager(user_db) as user_manager:
             await user_manager.create(user_data)
             logger.info(
-                "Суперпользователь {settings.superuser_email} успешно создан",
+                f'Суперпользователь {settings.superuser_email} успешно создан',
             )
-            break
-        break
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator:
     """Lifespan контекст для инициализации при старте."""
-    logger.info("Запуск приложения QRKot...")
+    logger.info('Запуск приложения QRKot...')
     async for session in get_async_session():
         await create_superuser(session)
         break
     yield
-    logger.info("Завершение приложения QRKot...")
+    logger.info('Завершение приложения QRKot...')

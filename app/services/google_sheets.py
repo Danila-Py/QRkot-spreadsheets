@@ -4,11 +4,12 @@ import gspread
 import logging
 from google.oauth2.service_account import Credentials
 from fastapi import HTTPException
-from typing import Optional
+from typing import Optional, List
+from gspread.exceptions import SpreadsheetNotFound, APIError
 
 from app.core.config import settings
 from app.schemas.charity_project import CharityProjectReport
-from constants import (
+from app.services.constants import (
     BASE_SCOPE,
     SPREADSHEET_HEADERS,
     SPREADSHEET_COLUMN_COUNT,
@@ -23,28 +24,11 @@ class GoogleAPIService:
     """Сервис для работы с Google Sheets API."""
 
     def __init__(self):
-        try:
-            self.credentials = self._get_credentials()
-            self.client = gspread.authorize(self.credentials)
-            logger.info('Google API client инициализирован успешно')
-        except Exception as e:
-            logger.error(f'Ошибка инициализации Google API: {str(e)}')
-            raise
+        self.client = self._get_client()
 
-    def _get_credentials(self) -> Credentials:
-        """Получает учетные данные для доступа к Google API."""
+    def _get_client(self):
+        """Инициализирует клиент Google Sheets."""
         try:
-            logger.info('Получение credentials...')
-            required_fields = [
-                'type',
-                'project_id',
-                'private_key_id',
-                'private_key',
-                'client_email'
-            ]
-            for field in required_fields:
-                if not getattr(settings, field, None):
-                    raise ValueError(f'Отсутствует обязательное поле: {field}')
             creds_dict = {
                 'type': settings.type,
                 'project_id': settings.project_id,
@@ -59,39 +43,44 @@ class GoogleAPIService:
                 ),
                 'client_x509_cert_url': settings.client_x509_cert_url,
             }
-            logger.info('Credentials созданы, аутентификация...')
+
             SCOPES = [
                 f'{BASE_SCOPE}spreadsheets',
                 f'{BASE_SCOPE}drive.file'
             ]
+
             creds = Credentials.from_service_account_info(creds_dict)
             creds = creds.with_scopes(SCOPES)
-            return creds
-        except Exception as error:
-            logger.error(f'Ошибка аутентификации: {str(error)}')
+            return gspread.authorize(creds)
+
+        except Exception as e:
+            logger.error(f'Ошибка инициализации Google API: {str(e)}')
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail=f'Ошибка аутентификации в Google API: {str(error)}'
+                detail='Ошибка подключения к Google Sheets'
             )
 
     def update_spreadsheet(
         self,
-        projects: list[CharityProjectReport],
+        projects: List[CharityProjectReport],
         spreadsheet_id: Optional[str] = None
     ) -> str:
         """Обновляет данные в существующей таблице."""
+        target_id = spreadsheet_id or settings.spreadsheet_id
+
+        if not target_id:
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail='Не указан ID таблицы'
+            )
+
         try:
-            target_spreadsheet_id = spreadsheet_id or settings.spreadsheet_id
-            if not target_spreadsheet_id:
-                raise HTTPException(
-                    status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                    detail='Не указан ID таблицы. Укажите SPREADSHEET_ID'
-                )
-            logger.info(f'Открываем таблицу с ID: {target_spreadsheet_id}')
-            spreadsheet = self.client.open_by_key(target_spreadsheet_id)
+            spreadsheet = self.client.open_by_key(target_id)
             worksheet = spreadsheet.sheet1
+
             worksheet.clear()
             worksheet.update(SPREADSHEET_HEADER_RANGE, [SPREADSHEET_HEADERS])
+
             data = []
             for project in projects:
                 data.append([
@@ -101,34 +90,33 @@ class GoogleAPIService:
                     project.collected_amount,
                     project.close_date
                 ])
+
             if data:
                 worksheet.update(f'A2:E{len(data) + 1}', data)
+
             worksheet.format(SPREADSHEET_HEADER_RANGE, {
                 'textFormat': {'bold': True},
                 'backgroundColor': SPREADSHEET_HEADER_BACKGROUND
             })
+
             try:
                 worksheet.columns_auto_resize(0, SPREADSHEET_COLUMN_COUNT)
-            except Exception as e:
-                logger.warning(
-                    f'Не удалось автоматически изменить размер колонок: {e}'
-                )
+            except APIError as e:
+                logger.warning(f'Не удалось изменить размер колонок: {e}')
+
             logger.info(f'Таблица обновлена {len(data)} проектами')
             return spreadsheet.url
-        except gspread.SpreadsheetNotFound:
-            logger.error(f'Таблица с ID {target_spreadsheet_id} не найдена')
+
+        except SpreadsheetNotFound:
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
-                detail=(
-                    'Таблица не найдена. '
-                    'Проверьте SPREADSHEET_ID и права доступа'
-                )
+                detail='Таблица не найдена. Проверьте ID и права доступа'
             )
-        except Exception as error:
-            logger.error(f'Ошибка обновления таблицы: {str(error)}')
+        except Exception as e:
+            logger.error(f'Ошибка обновления таблицы: {str(e)}')
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail=f'Ошибка обновления таблицы: {str(error)}'
+                detail='Ошибка при обновлении таблицы'
             )
 
 

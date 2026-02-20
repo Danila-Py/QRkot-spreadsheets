@@ -1,5 +1,4 @@
-from http import HTTPStatus
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_async_session
@@ -8,6 +7,26 @@ from app.crud.charity_project import charity_project_crud
 from app.services.google_sheets import google_api_service
 
 router = APIRouter()
+
+
+class GoogleSheetsError(HTTPException):
+    """Исключение для ошибок Google Sheets."""
+
+    def __init__(self, detail: str):
+        super().__init__(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f'Ошибка Google Sheets: {detail}',
+        )
+
+
+class ProjectNotFoundError(HTTPException):
+    """Исключение для отсутствующих проектов."""
+
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='Проекты не найдены'
+        )
 
 
 @router.post(
@@ -22,24 +41,19 @@ async def update_google_report(
     session: AsyncSession = Depends(get_async_session),
 ) -> dict:
     """Обновляет отчет в существующей Google Таблице."""
-    try:
-        projects = await charity_project_crud.get_projects_by_completion_rate(
-            session
-        )
-        if not projects:
-            return {
-                'message': 'Нет закрытых проектов для отчета',
-                'spreadsheet_url': None,
-                'projects_count': 0
-            }
-        spreadsheet_url = google_api_service.update_spreadsheet(projects)
+    projects = await charity_project_crud.get_projects_by_completion_rate(
+        session
+    )
+    if not projects:
         return {
-            'message': 'Отчет успешно обновлен',
-            'spreadsheet_url': spreadsheet_url,
-            'projects_count': len(projects)
+            'message': 'Нет закрытых проектов для отчета',
+            'spreadsheet_url': None,
+            'projects_count': 0
         }
-    except Exception as error:
-        raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail=f'Ошибка при обновлении отчета: {str(error)}'
-        )
+    spreadsheet_url = google_api_service.update_spreadsheet(projects)
+
+    return {
+        'message': 'Отчет успешно обновлен',
+        'spreadsheet_url': spreadsheet_url,
+        'projects_count': len(projects)
+    }

@@ -1,5 +1,6 @@
 import gspread
 from google.oauth2.service_account import Credentials
+from collections.abc import AsyncGenerator
 
 from app.core.config import settings
 from app.services.constants import BASE_SCOPE
@@ -25,7 +26,7 @@ INFO = {
 }
 
 
-async def get_service():
+async def get_service() -> AsyncGenerator[gspread.Client, None]:
     """Асинхронный генератор для получения Google Sheets сервиса."""
     try:
         creds = Credentials.from_service_account_info(INFO)
