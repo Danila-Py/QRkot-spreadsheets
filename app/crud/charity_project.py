@@ -29,7 +29,7 @@ class CRUDCharityProject(BaseCharityRepository):
             )
         )
         return db_project_id.scalars().first()
-    
+
     async def get_projects_by_completion_rate(
         self, session: AsyncSession
     ) -> list[CharityProjectReport]:
@@ -77,7 +77,4 @@ class CRUDCharityProject(BaseCharityRepository):
             return f'{hours} ч. {minutes:02} мин.'
         else:
             return f'{minutes} мин. {seconds:02} сек.'
-
-
-
 charity_project_crud = CRUDCharityProject(CharityProject)
