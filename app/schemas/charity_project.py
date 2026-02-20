@@ -1,0 +1,53 @@
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt
+
+from app.schemas.base import BaseDB
+
+
+class CharityProjectBase(BaseModel):
+    """Базовая схема благотворительного проекта."""
+
+    name: Optional[str] = Field(None, min_length=5, max_length=100)
+    description: Optional[str] = Field(None, min_length=10)
+    full_amount: Optional[PositiveInt] = None
+
+    model_config = ConfigDict(extra='forbid')
+
+
+class CharityProjectUpdate(CharityProjectBase):
+    """Схема для обновления данных существующего проекта."""
+
+    class Config:
+        json_schema_extra = {
+            'example': {
+                'name': 'Nutrition',
+                'description': 'For healthy nutrition for cats',
+                'full_amount': 5000
+            }
+        }
+
+
+class CharityProjectCreate(CharityProjectUpdate):
+    """Схема для создания нового благотворительного проекта."""
+
+    name: str = Field(..., min_length=5, max_length=100)
+    description: str = Field(..., min_length=10)
+    full_amount: PositiveInt
+
+
+class CharityProjectDB(CharityProjectBase, BaseDB):
+    """Схема для отображения данных проекта из базы данных."""
+
+
+class CharityProjectReport(BaseModel):
+    """Схема для отчёта по закрытым проектам."""
+
+    name: str
+    collection_time: str
+    description: str
+    collected_amount: int
+    close_date: str
+
+    class Config:
+        from_attributes = True
