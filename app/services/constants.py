@@ -17,13 +17,7 @@ SPREADSHEET_HEADERS = [
     'Собрано средств',
     'Дата закрытия'
 ]
-SPREADSHEET_COLUMN_COUNT = 4
-SPREADSHEET_HEADER_RANGE = 'A1:E1'
-SPREADSHEET_HEADER_BACKGROUND = {
-    'red': 0.9,
-    'green': 0.9,
-    'blue': 0.9
-}
+
 BASE_SCOPE = 'https://www.googleapis.com/auth/'
 
 # Форматирование времени

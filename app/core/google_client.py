@@ -1,6 +1,7 @@
+from collections.abc import AsyncGenerator
+
 import gspread
 from google.oauth2.service_account import Credentials
-from collections.abc import AsyncGenerator
 
 from app.core.config import settings
 from app.services.constants import BASE_SCOPE

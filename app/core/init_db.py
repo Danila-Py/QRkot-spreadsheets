@@ -47,8 +47,13 @@ async def create_superuser(session: AsyncSession) -> None:
 async def lifespan(app: FastAPI) -> AsyncIterator:
     """Lifespan контекст для инициализации при старте."""
     logger.info('Запуск приложения QRKot...')
-    async for session in get_async_session():
+
+    session_gen = get_async_session()
+    session = await session_gen.__anext__()
+
+    try:
         await create_superuser(session)
-        break
+    finally:
+        await session_gen.aclose()
     yield
     logger.info('Завершение приложения QRKot...')

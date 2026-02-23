@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_async_session
@@ -7,26 +7,6 @@ from app.crud.charity_project import charity_project_crud
 from app.services.google_sheets import google_api_service
 
 router = APIRouter()
-
-
-class GoogleSheetsError(HTTPException):
-    """Исключение для ошибок Google Sheets."""
-
-    def __init__(self, detail: str):
-        super().__init__(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f'Ошибка Google Sheets: {detail}',
-        )
-
-
-class ProjectNotFoundError(HTTPException):
-    """Исключение для отсутствующих проектов."""
-
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail='Проекты не найдены'
-        )
 
 
 @router.post(
